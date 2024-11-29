@@ -1,4 +1,3 @@
-# Código principal do Flask (app.py)
 import time
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -11,7 +10,13 @@ import logging
 
 app = Flask(__name__)
 
+# Configuração do Prometheus
 metrics = PrometheusMetrics(app)
+
+# Contadores de métricas
+total_acessos_listar = metrics.counter('acessos_listar_alunos', 'Total de acessos à rota listar alunos')
+total_acessos_cadastro = metrics.counter('acessos_cadastrar_aluno', 'Total de acessos à rota cadastrar aluno')
+
 # Configuração da chave secreta para sessões
 app.config['SECRET_KEY'] = 'minha_chave_secreta_super_secreta'  # Substitua por uma chave segura
 
@@ -60,11 +65,12 @@ class Aluno(db.Model):
     sobrenome = db.Column(db.String(50), nullable=False)
     turma = db.Column(db.String(50), nullable=False)
     disciplinas = db.Column(db.String(200), nullable=False)
+    ra = db.Column(db.String(20), unique=True, nullable=False)  # Adicionando RA como campo único
 
 # Visão do modelo Aluno para o painel administrativo
 class AlunoModelView(ModelView):
     datamodel = SQLAInterface(Aluno)
-    list_columns = ['id', 'nome', 'sobrenome', 'turma', 'disciplinas']
+    list_columns = ['id', 'nome', 'sobrenome', 'turma', 'disciplinas', 'ra']
 
 # Adicionar a visão do modelo ao AppBuilder
 appbuilder.add_view(
@@ -76,16 +82,40 @@ appbuilder.add_view(
 
 # Rota para listar todos os alunos - Método GET
 @app.route('/alunos', methods=['GET'])
+@total_acessos_listar
 def listar_alunos():
     alunos = Aluno.query.all()
-    output = [{'id': aluno.id, 'nome': aluno.nome, 'sobrenome': aluno.sobrenome, 'turma': aluno.turma, 'disciplinas': aluno.disciplinas} for aluno in alunos]
+    if not alunos:
+        logger.warning("Nenhum aluno encontrado na base de dados.")
+        return jsonify({'message': 'Nenhum aluno encontrado!'}), 404
+
+    output = [{'id': aluno.id, 'nome': aluno.nome, 'sobrenome': aluno.sobrenome, 'turma': aluno.turma, 'disciplinas': aluno.disciplinas, 'ra': aluno.ra} for aluno in alunos]
+    logger.info(f"{len(output)} alunos encontrados na base de dados.")
     return jsonify(output)
 
 # Rota para adicionar um aluno - Método POST
 @app.route('/alunos', methods=['POST'])
+@total_acessos_cadastro
 def adicionar_aluno():
     data = request.get_json()
-    novo_aluno = Aluno(nome=data['nome'], sobrenome=data['sobrenome'], turma=data['turma'], disciplinas=data['disciplinas'])
+    
+    # Verificar se o RA já existe
+    if Aluno.query.filter_by(ra=data.get('ra')).first():
+        return jsonify({'error': 'RA já cadastrado!'}), 409
+
+    # Validar campos obrigatórios
+    campos_necessarios = ['nome', 'sobrenome', 'turma', 'disciplinas', 'ra']
+    for campo in campos_necessarios:
+        if campo not in data or not data[campo].strip():
+            return jsonify({'error': f'O campo {campo} é obrigatório.'}), 400
+
+    novo_aluno = Aluno(
+        nome=data['nome'],
+        sobrenome=data['sobrenome'],
+        turma=data['turma'],
+        disciplinas=data['disciplinas'],
+        ra=data['ra']
+    )
     db.session.add(novo_aluno)
     db.session.commit()
     logger.info(f"Aluno {data['nome']} {data['sobrenome']} adicionado com sucesso!")
