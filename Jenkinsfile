@@ -1,8 +1,8 @@
 pipeline {
     agent any
-    
+
     environment {
-        // Define o local do composer;
+        // Define o local do composer
         COMPOSER = '/usr/local/bin/composer'
     }
 
@@ -10,10 +10,10 @@ pipeline {
         stage('Checkout') {
             steps {
                 // Faz o checkout do código do repositório
-                git 'https://your-repository-url.git'
+                git branch: 'main', url: 'https://github.com/felipecoltrotads/Trabalho_DevOps_22.8453-7.git'
             }
         }
-        
+
         stage('Install Dependencies') {
             steps {
                 // Instala as dependências do Composer
@@ -22,15 +22,14 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Run Tests') {
             steps {
-                // Aqui você pode rodar testes, por exemplo, com PHPUnit
+                // Executa os testes com PHPUnit
                 script {
                     sh 'php vendor/bin/phpunit'
                 }
             }
         }
-
     }
 }
