@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // Define o local do composer
-        COMPOSER = '/usr/local/bin/composer'
+        COMPOSER = '/mnt/c/ProgramData/ComposerSetup/bin/composer'
     }
 
     stages {
