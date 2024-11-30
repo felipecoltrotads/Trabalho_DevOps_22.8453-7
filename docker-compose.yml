@@ -1,56 +1,50 @@
+version: '3.8'
 
 services:
-  flask:
+  flask-app:
     build:
       context: ./flask
-      dockerfile: Dockerfile_flask
     ports:
       - "5000:5000"
     environment:
-      - FLASK_ENV=development
+      - DATABASE_HOST=mariadb
     depends_on:
       - mariadb
+    networks:
+      - devops-network
 
   mariadb:
     build:
       context: ./mariadb
-      dockerfile: Dockerfile_mariadb
-    ports:
-      - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: school_db
-      MYSQL_USER: flask_user
-      MYSQL_PASSWORD: flask_password
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: alunos
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./mariadb/init:/docker-entrypoint-initdb.d
+    networks:
+      - devops-network
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:latest
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
-    depends_on:
-      - mysqld_exporter
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-
-  mysqld_exporter:
-    image: prom/mysqld-exporter
-    ports:
-      - "9104:9104"
-    environment:
-      DATA_SOURCE_NAME: "user:password@(mariadb:3306)/"
-    depends_on:
-      - mariadb
+    networks:
+      - devops-network
 
   grafana:
     build:
       context: ./grafana
-      dockerfile: Dockerfile_grafana
     ports:
       - "3000:3000"
-    depends_on:
-      - prometheus
-    volumes:
-      - ./grafana/provisioning:/etc/grafana/provisioning
-      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - devops-network
+
+networks:
+  devops-network:
+    driver: bridge
+
+volumes:
+  mariadb_data:
