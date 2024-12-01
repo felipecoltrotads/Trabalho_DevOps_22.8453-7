@@ -1,24 +1,25 @@
 pipeline {
     agent any
     stages {
-        stage('Clone') {
+        stage('Clone Repository') {
             steps {
-                git 'git@github.com:felipecoltrotads/Trabalho_DevOps_22.8453-7.git'
+                git 'https://github.com/felipecoltrotads/Trabalho_DevOps_22.8453-7.git'
             }
         }
-        stage('Testes') {
+        stage('Run Tests') {
             steps {
-                sh 'pytest'
+                sh '/Trabalho_DevOps/flask/test_app.py'
             }
         }
-        stage('Build') {
+        stage('Build Docker Images') {
             steps {
-                sh 'docker-compose build'
+                sh 'docker-compose -f /Trabalho_DevOps/docker-compose.yml build'
+                sh 'docker-compose -f /Trabalho_DevOps/docker-compose.yml up -d'
             }
         }
-        stage('Deploy') {
+        stage('Deploy Application') {
             steps {
-                sh 'docker-compose up -d'
+                sh 'docker-compose -f /Trabalho_DevOps/docker-compose.yml up -d'
             }
         }
     }
