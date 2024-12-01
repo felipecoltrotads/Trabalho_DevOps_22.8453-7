@@ -4,20 +4,24 @@ FROM python:3.9-slim
 # Define o diretório de trabalho no container
 WORKDIR /app
 
-# Copia os requisitos para o container e instala as dependências
+# Instalar dependências do sistema necessárias para mysqlclient
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libmariadb-dev \
+    libmariadb-dev-compat \
+    pkg-config \
+    && apt-get clean
+
+# Copia o arquivo de requisitos e instala as dependências do Python
 COPY requirements.txt requirements.txt
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Configura variáveis de ambiente para o Flask
-ENV FLASK_APP=app.py
-ENV FLASK_RUN_HOST=0.0.0.0
-ENV FLASK_RUN_PORT=5000
-
-# Exponha a porta que será utilizada pela aplicação Flask
-EXPOSE 5000
-
-# Copia todos os arquivos do diretório atual para o diretório /app do container
+# Copia o restante da aplicação para o container
 COPY . .
 
-# Comando padrão para rodar o Flask
-CMD ["flask", "run"]
+# Exponha a porta do Flask
+EXPOSE 5000
+
+# Comando para iniciar a aplicação Flask
+CMD ["flask", "run", "--host=0.0.0.0"]
