@@ -1,26 +1,53 @@
 pipeline {
     agent any
+
+    environment {
+        REPO_URL = 'https://github.com/felipecoltrotads/Trabalho_DevOps_22.8453-7.git'
+        TARGET_BRANCH = 'main'
+    }
+
     stages {
-        stage('Clone Repository') {
+        stage('Obter Código') {
             steps {
-                git 'https://github.com/felipecoltrotads/Trabalho_DevOps_22.8453-7.git'
+                // Fazer o checkout do código fonte a partir do repositório
+                checkout scm: [$class: 'GitSCM', branches: [[name: "${TARGET_BRANCH}"]], userRemoteConfigs: [[url: "${REPO_URL}"]]]
             }
         }
-        stage('Run Tests') {
+
+        stage('Compilar e Publicar') {
             steps {
-                sh '/Trabalho_DevOps/flask/test_app.py'
+                script {
+                    // Construir imagens Docker e iniciar os containers
+                    sh '''
+                        docker-compose build
+                        docker-compose up -d
+                    '''
+                }
             }
         }
-        stage('Build Docker Images') {
+
+        stage('Executar Testes') {
             steps {
-                sh 'docker-compose -f /Trabalho_DevOps/docker-compose.yml build'
-                sh 'docker-compose -f /Trabalho_DevOps/docker-compose.yml up -d'
+                script {
+                    // Aguardar inicialização e rodar testes
+                    sh '''
+                        sleep 40
+                        docker-compose run --rm test
+                    '''
+                }
             }
         }
-        stage('Deploy Application') {
-            steps {
-                sh 'docker-compose -f /Trabalho_DevOps/docker-compose.yml up -d'
-            }
+    }
+
+    post {
+        always {
+            echo 'Execução do pipeline concluída.'
+        }
+        success {
+            echo 'Execução bem-sucedida!'
+        }
+        failure {
+            echo 'Erro na execução do pipeline.'
         }
     }
 }

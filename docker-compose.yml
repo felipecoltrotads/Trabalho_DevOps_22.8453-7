@@ -1,5 +1,3 @@
-version: '3.7'
-
 services:
   flask:
     build:
@@ -14,7 +12,7 @@ services:
       - app_network
 
   mariadb:
-    image: mariadb:11.6
+    image: mariadb:latest
     container_name: mariadb
     environment:
       MYSQL_ROOT_PASSWORD: root_password
@@ -23,8 +21,6 @@ services:
       MYSQL_PASSWORD: flask_password
     ports:
       - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
     networks:
       - app_network
 
@@ -32,7 +28,7 @@ services:
     image: prom/prometheus
     container_name: prometheus
     ports:
-      - "9090:9090"
+      - "9091:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
@@ -42,15 +38,12 @@ services:
 
   mysqld_exporter:
     image: prom/mysqld-exporter
-    container_name: mysqld_exporter
     ports:
       - "9104:9104"
     environment:
       DATA_SOURCE_NAME: "flask_user:flask_password@(mariadb:3306)/school_db"
     depends_on:
       - mariadb
-    networks:
-      - app_network
 
   grafana:
     build:
@@ -63,20 +56,6 @@ services:
       - prometheus
     networks:
       - app_network
-
-  tests:
-    build:
-      context: ./flask
-      dockerfile: Dockerfile_flask
-    command: pytest /app/testAddAluno.py
-    depends_on:
-      - mariadb
-      - flask
-    networks:
-      - app_network
-
-volumes:
-  db_data:
 
 networks:
   app_network:
