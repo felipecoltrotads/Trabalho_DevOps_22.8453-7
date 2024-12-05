@@ -4,6 +4,8 @@
 # Dockerfile (MariaDB)
 FROM mariadb:10.5
 
+RUN apt-get update && apt-get install -y mysql-client
+
 # Defina as variáveis de ambiente para o banco de dados
 ENV MYSQL_ROOT_PASSWORD=root_password
 ENV MYSQL_DATABASE=school_db

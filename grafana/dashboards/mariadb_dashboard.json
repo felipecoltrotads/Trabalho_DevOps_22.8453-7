@@ -1,69 +1,104 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "MariaDB Metrics",
-    "tags": ["mariadb", "database"],
-    "timezone": "browser",
-    "schemaVersion": 16,
-    "version": 0,
-    "panels": [
-      {
-        "type": "graph",
-        "title": "MariaDB Connections",
-        "targets": [
-          {
-            "expr": "mysql_global_status_threads_connected",
-            "format": "time_series",
-            "intervalFactor": 1,
-            "legendFormat": "Connected Threads",
-            "refId": "A"
-          }
-        ],
-        "datasource": "Prometheus",
-        "xaxis": {
-          "show": true
-        },
-        "yaxes": [
-          {
-            "format": "short",
-            "show": true
-          },
-          {
-            "show": true
-          }
-        ]
+  "uid": "http_perf_dashboard",
+  "title": "HTTP Metrics Overview",
+  "tags": [
+    "Web Metrics",
+    "Performance",
+    "Grafana"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 16,
+  "version": 3,
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Request Throughput",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 10,
+        "h": 5
       },
-      {
-        "type": "graph",
-        "title": "MariaDB Queries per Second",
-        "targets": [
-          {
-            "expr": "rate(mysql_global_status_questions[1m])",
-            "format": "time_series",
-            "intervalFactor": 1,
-            "legendFormat": "Queries per Second",
-            "refId": "B"
-          }
-        ],
-        "datasource": "Prometheus",
-        "xaxis": {
-          "show": true
-        },
-        "yaxes": [
-          {
-            "format": "short",
-            "show": true
-          },
-          {
-            "show": true
-          }
-        ]
-      }
-    ],
-    "refresh": "5s",
-    "time": {
-      "from": "now-15m",
-      "to": "now"
+      "targets": [
+        {
+          "expr": "rate(http_server_requests_total[2m])",
+          "legendFormat": "Req/sec",
+          "refId": "A2"
+        }
+      ],
+      "lines": true,
+      "linewidth": 1,
+      "fill": 0.5
+    },
+    {
+      "type": "graph",
+      "title": "Avg Request Latency",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "x": 10,
+        "y": 0,
+        "w": 14,
+        "h": 5
+      },
+      "targets": [
+        {
+          "expr": "rate(http_request_duration_sum[2m]) / rate(http_request_duration_count[2m])",
+          "legendFormat": "Latency (s)",
+          "refId": "B2"
+        }
+      ],
+      "lines": true,
+      "linewidth": 1,
+      "fill": 0.3
+    },
+    {
+      "type": "graph",
+      "title": "Active HTTP Requests",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 10,
+        "h": 5
+      },
+      "targets": [
+        {
+          "expr": "active_http_requests_total",
+          "legendFormat": "In Progress",
+          "refId": "C2"
+        }
+      ],
+      "lines": true,
+      "linewidth": 1,
+      "fill": 0.5
+    },
+    {
+      "type": "graph",
+      "title": "Error Rate",
+      "datasource": "Prometheus",
+      "gridPos": {
+        "x": 10,
+        "y": 5,
+        "w": 14,
+        "h": 5
+      },
+      "targets": [
+        {
+          "expr": "rate(http_requests_total{status=~'5..'}[2m])",
+          "legendFormat": "Errors/sec",
+          "refId": "D2"
+        }
+      ],
+      "lines": true,
+      "linewidth": 1,
+      "fill": 0.3
     }
-  }
+  ],
+  "refresh": "20s",
+  "time": {
+    "from": "now-2h",
+    "to": "now"
+  },
+  "overwrite": true
 }
