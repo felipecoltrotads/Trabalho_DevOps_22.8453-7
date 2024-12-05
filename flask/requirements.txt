@@ -1,11 +1,11 @@
-Flask==2.2.5
-Flask-SQLAlchemy==2.5.1
-PyMySQL
-Flask-AppBuilder
-Werkzeug
-MarkupSafe
-WTForms
-prometheus-flask-exporter
-pytest
-pytest-flask
-mysqlclient
+Flask==1.1.4  # Versão compatível com Flask-AppBuilder
+Flask-SQLAlchemy==2.4.4  # Extensão do Flask para integração com SQLAlchemy
+PyMySQL==0.9.3  # Biblioteca para conexão do Python com o banco de dados MariaDB
+Flask-AppBuilder==3.3.0  # Versão compatível com Flask 1.x
+Werkzeug==1.0.1  # Versão compatível do Werkzeug para evitar erros de importação
+MarkupSafe==2.0.1  # Versão compatível com Jinja2 e Flask
+WTForms==2.3.3  # Versão compatível com Flask-AppBuilder que contém o módulo 'compat'
+prometheus-flask-exporter==0.18.3
+pytest==6.2.5
+pytest-flask==1.2.0
+Flask-Testing==0.8.0

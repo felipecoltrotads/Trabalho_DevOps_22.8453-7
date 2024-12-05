@@ -1,27 +1,17 @@
-# Dockerfile (Flask App)
-FROM python:3.9-slim
+# Dockerfile (Aplicação Flask AppBuilder)
+FROM python:3.9-alpine
 
-# Define o diretório de trabalho no container
-WORKDIR /app
+# Define o diretório de trabalho
+WORKDIR /usr/src/app
 
-# Instalar dependências do sistema necessárias para mysqlclient
-RUN apt-get update && apt-get install -y \
-    gcc \
-    libmariadb-dev \
-    libmariadb-dev-compat \
-    pkg-config \
-    && apt-get clean
+# Copiar o arquivo de dependências para o container
+COPY requirements.txt ./
 
-# Copia o arquivo de requisitos e instala as dependências do Python
-COPY requirements.txt requirements.txt
-RUN pip install --upgrade pip
+# Instala as dependências do Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia o restante da aplicação para o container
-COPY . .
+# Copiar o arquivo principal da aplicação
+COPY app.py ./
 
-# Exponha a porta do Flask
-EXPOSE 5000
-
-# Comando para iniciar a aplicação Flask
-CMD ["flask", "run", "--host=0.0.0.0"]
+# Adicionar um pequeno atraso antes de iniciar a aplicação Flask
+CMD ["sh", "-c", "sleep 15 && python -m flask run --host=0.0.0.0"]

@@ -1,60 +1,103 @@
-from flask import Flask, jsonify, request
+import time
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
+from flask_appbuilder import AppBuilder, SQLA
+from flask_appbuilder.models.sqla.interface import SQLAInterface
+from flask_appbuilder import ModelView
+from sqlalchemy.exc import OperationalError
+from prometheus_flask_exporter import PrometheusMetrics
+import logging
 
-# Configuração da aplicação Flask
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:root@mariadb/alunos'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+application = Flask(__name__)
 
-db = SQLAlchemy(app)
+# Configuração de métricas Prometheus
+metrics = PrometheusMetrics(application)
 
-# Modelo de Aluno
-class Aluno(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(80), nullable=False)
-    ra = db.Column(db.String(20), nullable=False)
+# Configuração de segurança
+application.config['SECRET_KEY'] = 'chave_super_segura_12345'  # Substitua por uma chave mais forte
 
-    def __repr__(self):
-        return f'<Aluno {self.nome}>'
+# Configuração do banco de dados
+application.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://admin:password@mariadb/student_db'
+application.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Rotas
-@app.route('/alunos', methods=['GET'])
-def listar_alunos():
-    alunos = Aluno.query.all()
-    return jsonify([{'id': aluno.id, 'nome': aluno.nome, 'ra': aluno.ra} for aluno in alunos])
+# Inicializar o banco de dados e AppBuilder
+database = SQLAlchemy(application)
+app_manager = AppBuilder(application, database.session)
 
-@app.route('/alunos', methods=['POST'])
-def cadastrar_aluno():
+# Configuração de logs
+logging.basicConfig(level=logging.DEBUG)
+log = logging.getLogger(__name__)
+
+# Modelo - Tabela Estudante
+class Estudante(database.Model):
+    id = database.Column(database.Integer, primary_key=True)
+    primeiro_nome = database.Column(database.String(50), nullable=False)
+    ultimo_nome = database.Column(database.String(50), nullable=False)
+    classe = database.Column(database.String(50), nullable=False)
+    materias = database.Column(database.String(200), nullable=False)
+    registro = database.Column(database.String(20), unique=True, nullable=False)
+
+# Tentativas de inicialização do banco
+max_retries = 5
+for attempt in range(max_retries):
+    try:
+        with application.app_context():
+            database.create_all()
+            # Adicionar usuário admin padrão
+            if not app_manager.sm.find_user(username='superuser'):
+                app_manager.sm.add_user(
+                    username='superuser',
+                    first_name='System',
+                    last_name='Admin',
+                    email='admin@domain.com',
+                    role=app_manager.sm.find_role(app_manager.sm.auth_role_admin),
+                    password='admin123'
+                )
+        log.info("Banco de dados configurado com sucesso.")
+        break
+    except OperationalError:
+        if attempt < max_retries - 1:
+            log.warning("Falha ao conectar ao banco. Tentando novamente em 3 segundos...")
+            time.sleep(3)
+        else:
+            log.error("Exaustão de tentativas de conexão ao banco de dados.")
+            raise
+
+# Visão para o modelo Estudante
+class EstudanteView(ModelView):
+    datamodel = SQLAInterface(Estudante)
+    list_columns = ['id', 'primeiro_nome', 'ultimo_nome', 'classe', 'materias', 'registro']
+
+# Adicionar visão ao painel
+app_manager.add_view(
+    EstudanteView,
+    "Gerenciamento de Estudantes",
+    icon="fa-graduation-cap",
+    category="Estudantes",
+)
+
+# Rota para obter lista de estudantes
+@application.route('/estudantes', methods=['GET'])
+def obter_estudantes():
+    estudantes = Estudante.query.all()
+    resultado = [{'id': estudante.id, 'primeiro_nome': estudante.primeiro_nome, 'ultimo_nome': estudante.ultimo_nome, 'classe': estudante.classe, 'materias': estudante.materias, 'registro': estudante.registro} for estudante in estudantes]
+    return jsonify(resultado)
+
+# Rota para adicionar estudante
+@application.route('/estudantes', methods=['POST'])
+def criar_estudante():
     dados = request.get_json()
-    novo_aluno = Aluno(nome=dados['nome'], ra=dados['ra'])
-    db.session.add(novo_aluno)
-    db.session.commit()
-    return jsonify({'mensagem': 'Aluno cadastrado com sucesso!'}), 201
+    novo_estudante = Estudante(
+        primeiro_nome=dados['primeiro_nome'],
+        ultimo_nome=dados['ultimo_nome'],
+        classe=dados['classe'],
+        materias=dados['materias'],
+        registro=dados['registro']
+    )
+    database.session.add(novo_estudante)
+    database.session.commit()
+    log.info(f"Estudante {dados['primeiro_nome']} {dados['ultimo_nome']} adicionado com sucesso.")
+    return jsonify({'mensagem': 'Estudante criado com sucesso!'}), 201
 
-@app.route('/alunos/<int:id>', methods=['GET'])
-def obter_aluno(id):
-    aluno = Aluno.query.get_or_404(id)
-    return jsonify({'id': aluno.id, 'nome': aluno.nome, 'ra': aluno.ra})
-
-@app.route('/alunos/<int:id>', methods=['PUT'])
-def atualizar_aluno(id):
-    dados = request.get_json()
-    aluno = Aluno.query.get_or_404(id)
-    aluno.nome = dados['nome']
-    aluno.ra = dados['ra']
-    db.session.commit()
-    return jsonify({'mensagem': 'Aluno atualizado com sucesso!'})
-
-@app.route('/alunos/<int:id>', methods=['DELETE'])
-def deletar_aluno(id):
-    aluno = Aluno.query.get_or_404(id)
-    db.session.delete(aluno)
-    db.session.commit()
-    return jsonify({'mensagem': 'Aluno deletado com sucesso!'})
-
-# Inicialização da aplicação
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()  # Garante que o banco e as tabelas sejam criados
-    app.run(host='0.0.0.0', port=5000)
-
+    application.run(host='0.0.0.0', port=5050, debug=True)
